@@ -34,6 +34,11 @@ class KPSSoapClient extends SoapClient
     const SP = "http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702";
 
     /**
+     * Certificate
+     */
+    protected $certificate;
+    
+    /**
      * STS Properties
      */
     protected $stsHostName;
@@ -60,7 +65,18 @@ class KPSSoapClient extends SoapClient
 
         $this->setStsUsername($username);
         $this->setStsPassword($password);
-
+        
+        if (isset($options['local_cert']))
+        {
+            if (is_readable($options['local_cert']) === true)
+            {
+                $this->certificate = $options['local_cert'];
+            }
+            else {
+                throw new Exception("Could not load local certificate.");
+            }
+        }
+        
         $wsdlXml = @file_get_contents($wsdl);
 
         if ($wsdlXml === false)
@@ -315,7 +331,12 @@ class KPSSoapClient extends SoapClient
         curl_setopt($ch, CURLOPT_URL, $this->stsEndpoint);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_CAINFO, getcwd() . DIRECTORY_SEPARATOR . "cert.pem");
+        
+        if (isset($this->certificate))
+        {
+            curl_setopt($ch, CURLOPT_CAINFO, $this->certificate);
+        }
+        
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(
             "Host: " . $this->stsHostName,
             "Content-Type: application/soap+xml; charset=utf-8",
